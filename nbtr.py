@@ -61,7 +61,6 @@ def read(filename):
 	data = {'host':'%s:8887' % socket.gethostbyname(socket.gethostname()),'filename':filename, 'firstHop':'true'}
 	r = requests.post("http://localhost:8887/setParts", json={'maxParts':maxParts})
 	r = requests.post("http://%s/read" % randomHost, json=data)
-	
 
 def main():
 	server = Process(target=app.run, args=("0.0.0.0", 8887, True))
@@ -76,7 +75,7 @@ def main():
 
 
 if __name__ == '__main__':
-	parser = argparse.ArgumentParser(description='A quick and dirty Multi-Path TCP using remote proxy hosts.')
+	parser = argparse.ArgumentParser(description='A quick and dirty implmentation of latency based file storage using remote proxy hosts.')
 	parser.add_argument('fileToSend', metavar='F', type=str, help='The file you would like to send.')
 	parser.add_argument('-b', type=int, default=4096, help='The size of the blocks you want to split the file into.' )
 	args = parser.parse_args()
