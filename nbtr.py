@@ -35,43 +35,47 @@ def receive():
 				for index in xrange(0,len(parts)):
 					fp.write(parts[index])
 		return 'ok'
+class nbtr(object):
+	def __init__(self, remoteHosts, localPort=8887,host="0.0.0.0",flaskDebug=False):
+		self.remoteHosts = remoteHosts
+		self._server = Process(target = app.run, args = (host, localPort, flaskDebug))
+		self._server.start()
+		self._fileData
+	def _splitupFile(self,filename, blockSize):
+		fp = file(filename)
+		count = 0
+		for filePart in iter(lambda: fp.read(blockSize), ''):
+			filePart = base64.b64encode(filePart)
+			yield (count,filePart)
+			count+=1
 
-def splitupFile(filename, blockSize):
-	fp = file(filename)
-	count = 0
-	for filePart in iter(lambda: fp.read(blockSize), ''):
-		filePart = base64.b64encode(filePart)
-		yield (count,filePart)
-		count+=1
+	def write(self,filename, blockSize=4096):
+		data = {}
+		print("Sending file")
+		global maxParts
+		for count, part in splitupFile(filename, blockSize):
+			data = {'filename':filename, 'index':count, 'data':part}
+			randomHost = random.choice(remoteHosts)
+			r = requests.post("http://%s" % randomHost, json=data)
+			print("Part %d sent to %s" % (count, random.choice(remoteHosts)))
+			maxParts = count
+		print("Sending finished")
 
-def write(filename, blockSize=4096):
-	data = {}
-	print("Sending file")
-	global maxParts
-	for count, part in splitupFile(filename, blockSize):
-		data = {'filename':filename, 'index':count, 'data':part}
+	def read(self,filename):
 		randomHost = random.choice(remoteHosts)
-		r = requests.post("http://%s" % randomHost, json=data)
-		print("Part %d sent to %s" % (count, random.choice(remoteHosts)))
-		maxParts = count
-	print("Sending finished")
+		data = {'host':'%s:8887' % socket.gethostbyname(socket.gethostname()),'filename':filename, 'firstHop':'true'}
+		r = requests.post("http://localhost:8887/setParts", json={'maxParts':maxParts})
+		r = requests.post("http://%s/read" % randomHost, json=data)
 
-def read(filename):
-	randomHost = random.choice(remoteHosts)
-	data = {'host':'%s:8887' % socket.gethostbyname(socket.gethostname()),'filename':filename, 'firstHop':'true'}
-	r = requests.post("http://localhost:8887/setParts", json={'maxParts':maxParts})
-	r = requests.post("http://%s/read" % randomHost, json=data)
+	def close(self):
+		self._server.terminate()
+		self._server.join()
 
-def main():
-	server = Process(target=app.run, args=("0.0.0.0", 8887, True))
-	server.start()
+def main():	
 	write(args.fileToSend, args.b)
 	time.sleep(5)
 	read(args.fileToSend)
 	time.sleep(5)
-	server.terminate()
-	server.join()
-
 
 
 if __name__ == '__main__':
