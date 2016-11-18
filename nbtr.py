@@ -9,7 +9,7 @@ import time
 import socket
 
 #the remote bouncers that you want to hit
-remoteHosts = ['192.168.0.254:8888','192.168.0.254:8889']
+remoteHosts = []
 maxParts = 0
 app = Flask(__name__)
 @app.route('/setParts', methods=['POST'])
@@ -46,24 +46,40 @@ def splitupFile(filename, blockSize):
 
 def write(filename, blockSize=4096):
 	data = {}
-	print("Sending file")
+	print('Sending file')
 	global maxParts
 	for count, part in splitupFile(filename, blockSize):
 		data = {'filename':filename, 'index':count, 'data':part}
 		randomHost = random.choice(remoteHosts)
-		r = requests.post("http://%s" % randomHost, json=data)
-		print("Part %d sent to %s" % (count, random.choice(remoteHosts)))
+		r = requests.post('http://%s' % randomHost, json=data)
+		print('Part %d sent to %s' % (count, random.choice(remoteHosts)))
 		maxParts = count
-	print("Sending finished")
+	print('Sending finished')
 
 def read(filename):
 	randomHost = random.choice(remoteHosts)
 	data = {'host':'%s:8887' % socket.gethostbyname(socket.gethostname()),'filename':filename, 'firstHop':'true'}
-	r = requests.post("http://localhost:8887/setParts", json={'maxParts':maxParts})
-	r = requests.post("http://%s/read" % randomHost, json=data)
+	r = requests.post('http://localhost:8887/setParts', json={'maxParts':maxParts})
+	r = requests.post('http://%s/read' % randomHost, json=data)
+
+def loadHostsFromFile(fp):
+	global remoteHosts
+	remoteHosts = []
+	for host in fp:
+		remoteHosts.append(host.strip())
 
 def main():
-	server = Process(target=app.run, args=("0.0.0.0", 8887, True))
+
+	#if os.path.isfile(args.hosts):
+	loadHostsFromFile(open(args.hosts, 'r'))
+	# else:
+	# 	if args.hosts.strip() == 'hosts.txt':
+	# 		print('File "%s" not found.' % args.hosts)
+	# 	else:
+	# 		print('File "hosts.txt" not found, perhaps you forgot to use the --hosts flag?')
+	# 	return
+
+	server = Process(target=app.run, args=('0.0.0.0', 8887, True))
 	server.start()
 	write(args.fileToSend, args.b)
 	time.sleep(5)
@@ -78,5 +94,6 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='A quick and dirty implmentation of latency based file storage using remote proxy hosts.')
 	parser.add_argument('fileToSend', metavar='F', type=str, help='The file you would like to send.')
 	parser.add_argument('-b', type=int, default=4096, help='The size of the blocks you want to split the file into.' )
+	parser.add_argument('--hosts', type=str, default='hosts.txt', help='Specify a specfic file to draw remote bouncers from.  Default is hosts.txt')
 	args = parser.parse_args()
 	main()
