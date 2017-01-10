@@ -58,7 +58,7 @@ def write(filename, blockSize=4096):
 
 def read(filename):
 	randomHost = random.choice(remoteHosts)
-	data = {'host':'%s:8887' % socket.gethostbyname(socket.gethostname()),'filename':filename, 'firstHop':'true'}
+	data = {'filename':filename, 'firstHop':'true'}
 	r = requests.post('http://localhost:8887/setParts', json={'maxParts':maxParts})
 	r = requests.post('http://%s/read' % randomHost, json=data)
 
