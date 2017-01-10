@@ -19,7 +19,7 @@ def read():
 	json = request.json
 	if not json:
 		return abort(400)
-	toReadBack[json['filename']] = json['host']
+	toReadBack[json['filename']] = request.remote_addr
 	if json['firstHop'] == 'true':
 		json['firstHop'] = 'false'
 		for host in hosts:
