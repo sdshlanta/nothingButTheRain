@@ -70,14 +70,14 @@ def loadHostsFromFile(fp):
 
 def main():
 
-	#if os.path.isfile(args.hosts):
-	loadHostsFromFile(open(args.hosts, 'r'))
-	# else:
-	# 	if args.hosts.strip() == 'hosts.txt':
-	# 		print('File "%s" not found.' % args.hosts)
-	# 	else:
-	# 		print('File "hosts.txt" not found, perhaps you forgot to use the --hosts flag?')
-	# 	return
+	if os.path.isfile(args.hosts):
+		loadHostsFromFile(open(args.hosts, 'r'))
+	else:
+		if args.hosts.strip() != 'hosts.txt':
+	 		print('File "%s" not found.' % args.hosts)
+	 	else:
+	 		print('File "hosts.txt" not found, perhaps you forgot to use the --hosts flag?')
+	 	return
 
 	server = Process(target=app.run, args=('0.0.0.0', 8887, True))
 	server.start()
