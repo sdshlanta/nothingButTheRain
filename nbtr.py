@@ -14,19 +14,21 @@ app = Flask(__name__)
 @app.route('/', methods=['POST'])
 def receive():
 	def writePart(fileName, buffer, offset):
-		with open(fileName,'wb') as fp:
-			fp.seek(offset)
+		with open(fileName,'r+b') as fp:
+			fp.seek(int(offset))
 			fp.write(buffer)
+			fp.flush()
 	if not request.json:
 		return abort(400)
 	else:
-		t = threading.Thread(target=writePart, args=(request.json['filename'], base64.b64decode(request.json['data']), request.json['index']))
-		t.start
+		print(request.json[u'index'])
+		t = threading.Thread(target=writePart, args=(request.json[u'filename'], base64.b64decode(request.json[u'data']), request.json[u'index']))
+		t.start()
 		return 'ok'
 
 def splitupFile(filename, blockSize):
-	with open(filename) as fp:
-		for count, filePart in enumerate(iter(lambda: fp.read(blockSize), ''), start=1):
+	with open(filename, 'r+b') as fp:
+		for count, filePart in enumerate(iter(lambda: fp.read(blockSize), '')):
 			filePart = base64.b64encode(filePart)
 			yield (count*blockSize, filePart)
 
@@ -38,7 +40,7 @@ def write(filename, blockSize=4096):
 		data = {'filename':filename, 'index':offset, 'data':part}
 		randomHost = random.choice(remoteHosts)
 		r = requests.post('http://%s' % randomHost, json=data)
-		print('Part %d sent to %s' % (offset/blockSize, randomHost))
+		print('Part %d sent to %s' % (offset, randomHost))
 	print('Sending finished')
 
 def read(filename):
@@ -66,9 +68,9 @@ def main():
 	server = Process(target=app.run, args=('0.0.0.0', 80, False))
 	server.start()
 	write(args.fileToSend, args.b)
-	time.sleep(5)
+	raw_input('Press Enter to read...')
 	read(args.fileToSend)
-	raw_input('Press Enter to continue...')
+	raw_input('Press Enter to exit...')
 	server.terminate()
 	server.join()
 
