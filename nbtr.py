@@ -11,14 +11,6 @@ import threading
 #the remote bouncers that you want to hit
 remoteHosts = []
 app = Flask(__name__)
-"""@app.route('/setParts', methods=['POST'])
-def setMaxParts():
-	if not request.json:
-		return abort(400)
-	global maxParts
-	maxParts = int(request.json['maxParts'])
-	return 'ok'
-"""
 @app.route('/', methods=['POST'])
 def receive():
 	def writePart(fileName, buffer, offset):
@@ -47,13 +39,11 @@ def write(filename, blockSize=4096):
 		randomHost = random.choice(remoteHosts)
 		r = requests.post('http://%s' % randomHost, json=data)
 		print('Part %d sent to %s' % (offset/blockSize, randomHost))
-		#maxParts = count
 	print('Sending finished')
 
 def read(filename):
 	randomHost = random.choice(remoteHosts)
 	data = {'filename':filename, 'firstHop':'true'}
-	#r = requests.post('http://localhost:80/setParts', json={'maxParts':maxParts})
 	r = requests.post('http://%s/read' % randomHost, json=data)
 
 def loadHostsFromFile(fp):
