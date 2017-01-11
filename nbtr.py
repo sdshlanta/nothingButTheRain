@@ -6,60 +6,54 @@ from multiprocessing import Process
 from flask import Flask, request
 import os
 import time
-import socket
+import threading
 
 #the remote bouncers that you want to hit
 remoteHosts = []
-maxParts = 0
 app = Flask(__name__)
-@app.route('/setParts', methods=['POST'])
+"""@app.route('/setParts', methods=['POST'])
 def setMaxParts():
 	if not request.json:
 		return abort(400)
 	global maxParts
 	maxParts = int(request.json['maxParts'])
 	return 'ok'
-parts = {}
+"""
 @app.route('/', methods=['POST'])
 def receive():
+	def writePart(fileName, buffer, offset):
+		with open(fileName,'wb') as fp:
+			fp.seek(offset)
+			fp.write(buffer)
 	if not request.json:
 		return abort(400)
 	else:
-		global maxParts
-		global parts
-		parts[int(request.json['index'])] = base64.b64decode(request.json['data'])
-		if len(parts) == maxParts+1:
-			filename = request.json['filename']
-			time.sleep(1)
-			with open('reassembled.jpg','wb') as fp:
-				for index in xrange(0,len(parts)):
-					fp.write(parts[index])
+		t = threading.Thread(target=writePart, args=(request.json['filename'], base64.b64decode(request.json['data']), request.json['index']))
+		t.start
 		return 'ok'
 
 def splitupFile(filename, blockSize):
-	fp = file(filename)
-	count = 0
-	for filePart in iter(lambda: fp.read(blockSize), ''):
-		filePart = base64.b64encode(filePart)
-		yield (count,filePart)
-		count+=1
+	with open(filename) as fp:
+		for count, filePart in enumerate(iter(lambda: fp.read(blockSize), ''), start=1):
+			filePart = base64.b64encode(filePart)
+			yield (count*blockSize, filePart)
 
 def write(filename, blockSize=4096):
 	data = {}
 	print('Sending file')
 	global maxParts
-	for count, part in splitupFile(filename, blockSize):
-		data = {'filename':filename, 'index':count, 'data':part}
+	for offset, part in splitupFile(filename, blockSize):
+		data = {'filename':filename, 'index':offset, 'data':part}
 		randomHost = random.choice(remoteHosts)
 		r = requests.post('http://%s' % randomHost, json=data)
-		print('Part %d sent to %s' % (count, random.choice(remoteHosts)))
-		maxParts = count
+		print('Part %d sent to %s' % (offset/blockSize, randomHost))
+		#maxParts = count
 	print('Sending finished')
 
 def read(filename):
 	randomHost = random.choice(remoteHosts)
 	data = {'filename':filename, 'firstHop':'true'}
-	r = requests.post('http://localhost:8887/setParts', json={'maxParts':maxParts})
+	#r = requests.post('http://localhost:80/setParts', json={'maxParts':maxParts})
 	r = requests.post('http://%s/read' % randomHost, json=data)
 
 def loadHostsFromFile(fp):
@@ -79,12 +73,12 @@ def main():
 	 		print('File "hosts.txt" not found, perhaps you forgot to use the --hosts flag?')
 	 	return
 
-	server = Process(target=app.run, args=('0.0.0.0', 8887, True))
+	server = Process(target=app.run, args=('0.0.0.0', 80, False))
 	server.start()
 	write(args.fileToSend, args.b)
 	time.sleep(5)
 	read(args.fileToSend)
-	time.sleep(5)
+	raw_input('Press Enter to continue...')
 	server.terminate()
 	server.join()
 
