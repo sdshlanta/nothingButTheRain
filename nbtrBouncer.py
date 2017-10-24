@@ -19,12 +19,15 @@ def read():
 	json = request.json
 	if not json:
 		return abort(400)
-	toReadBack[json['filename']] = json['host']
 	if json['firstHop'] == 'true':
+		toReadBack[json['filename']] = request.remote_addr
 		json['firstHop'] = 'false'
+		json['host'] = request.remote_addr
 		for host in hosts:
 			t = threading.Thread(target=nextbounce, args=(json, ))
 			t.start()
+	else:
+		toReadBack[json['filename']] = json['host']`
 	return 'ok'
 
 @app.route('/', methods=['POST'])
