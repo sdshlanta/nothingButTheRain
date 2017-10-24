@@ -51,17 +51,19 @@ def receive():
 
 
 def splitupFile(filename, blockSize):
-	with open(filename, 'r+b') as fp:
-		for count, filePart in enumerate(iter(lambda: fp.read(blockSize), '')):
-			filePart = base64.b64encode(filePart)
-			yield (count*blockSize, filePart)
+	fp = file(filename)
+	count = 0
+	for filePart in iter(lambda: fp.read(blockSize), ''):
+		filePart = base64.b64encode(filePart)
+		yield (count,filePart)
+		count+=1
 
 def write(filename, blockSize=4096):
 	data = {}
 	print('writing file')
 	global maxParts
-	for offset, part in splitupFile(filename, blockSize):
-		data = {'filename':filename, 'index':offset, 'data':part}
+	for count, part in splitupFile(filename, blockSize):
+		data = {'filename':filename, 'index':count, 'data':part}
 		randomHost = random.choice(remoteHosts)
 		r = requests.post('http://%s/' % randomHost, json=data)
 		print('Part %d sent to %s' % (count, random.choice(remoteHosts)))
@@ -70,7 +72,8 @@ def write(filename, blockSize=4096):
 
 def read(filename):
 	randomHost = random.choice(remoteHosts)
-	data = {'filename':filename, 'firstHop':'true'}
+	data = {'host':'%s:8887' % socket.gethostbyname(socket.gethostname()),'filename':filename, 'firstHop':'true'}
+	r = requests.post('http://localhost:8887/setParts', json={'maxParts':maxParts})
 	r = requests.post('http://%s/read' % randomHost, json=data)
 
 def loadHostsFromFile(fp):

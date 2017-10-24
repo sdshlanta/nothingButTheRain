@@ -27,7 +27,7 @@ def read():
 			t = threading.Thread(target=nextbounce, args=(json, ))
 			t.start()
 	else:
-		toReadBack[json['filename']] = json['host']`
+		toReadBack[json['filename']] = json['host']
 	return 'ok'
 
 @app.route('/', methods=['POST'])
