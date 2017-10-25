@@ -20,9 +20,8 @@ def read():
 	if not json:
 		return abort(400)
 	if json['firstHop'] == 'true':
-		toReadBack[json['filename']] = request.remote_addr
+		toReadBack[json['filename']] = json['host']
 		json['firstHop'] = 'false'
-		json['host'] = request.remote_addr
 		for host in hosts:
 			t = threading.Thread(target=nextbounce, args=(json, ))
 			t.start()
@@ -58,7 +57,7 @@ def finishedRead():
 	# print(toReadBack.iterkeys)
 	# print(filename)
 	if filename in toReadBack.iterkeys():
-		print(filename)
+		# print(filename)
 		del toReadBack[filename]
 	return 'ok'
 

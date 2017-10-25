@@ -8,10 +8,19 @@ import os
 import time
 import socket
 import threading
+import sys
+import logging
 
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 remoteHosts = []
 maxParts = 0
 parts = {}
+
+def printProgress(i, count, prefix="", size=40):
+	x = int(size*i/count)
+	sys.stdout.write("%s[%s%s] %i/%i\r" % (prefix, "#"*x, "."*(size-x), i, count))
+	sys.stdout.flush()
 
 app = Flask(__name__)
 @app.route('/setParts', methods=['POST'])
@@ -36,11 +45,13 @@ def receive():
 			global maxParts
 			global parts
 			parts[int(request.json['index'])] = base64.b64decode(request.json['data'])
+			# print(list(parts.iterkeys()))
+			printProgress(len(parts), maxParts + 1)
 			if len(parts) == maxParts+1:
 				filename = request.json['filename']
 				time.sleep(1)
 				t = threading.Thread(target=readFinished, args=(filename,))
-				with open('reassembled.jpg','wb') as fp:
+				with open('reassembled.%s' % filename.split('.')[1], 'wb') as fp:
 					for index in xrange(0,len(parts)):
 						fp.write(parts[index])
 				t.start()
@@ -48,7 +59,6 @@ def receive():
 			print(str(e))
 			
 		return 'ok'
-
 
 def splitupFile(filename, blockSize):
 	fp = file(filename)
@@ -73,6 +83,7 @@ def write(filename, blockSize=4096):
 def read(filename):
 	randomHost = random.choice(remoteHosts)
 	data = {'host':'%s:8887' % socket.gethostbyname(socket.gethostname()),'filename':filename, 'firstHop':'true'}
+	# print(data)
 	r = requests.post('http://localhost:8887/setParts', json={'maxParts':maxParts})
 	r = requests.post('http://%s/read' % randomHost, json=data)
 
@@ -83,7 +94,6 @@ def loadHostsFromFile(fp):
 		remoteHosts.append(host.strip())
 
 def main():
-
 	if os.path.isfile(args.hosts):
 		loadHostsFromFile(open(args.hosts, 'r'))
 	else:
